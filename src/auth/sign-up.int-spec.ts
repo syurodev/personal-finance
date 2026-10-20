@@ -1,6 +1,8 @@
-import { eq } from 'drizzle-orm';
+import { count, eq } from 'drizzle-orm';
+import { asUser } from '../../test/fixtures.js';
 import { db, pool } from '../db/index.js';
-import { user } from '../db/schema/index.js';
+import { currentContext } from '../db/request-context.js';
+import { category, user } from '../db/schema/index.js';
 import { auth } from './auth.js';
 
 describe('sign-up allowlist', () => {
@@ -23,5 +25,10 @@ describe('sign-up allowlist', () => {
     const [row] = await db.select().from(user).where(eq(user.email, 'allowed@example.com'));
     expect(row?.baseCurrency).toBe('VND');
     expect(row?.timezone).toBe('Asia/Ho_Chi_Minh');
+
+    const [categories] = await asUser(row!.id, () =>
+      currentContext().tx.select({ value: count() }).from(category),
+    );
+    expect(categories?.value).toBe(15);
   });
 });

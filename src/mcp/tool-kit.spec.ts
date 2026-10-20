@@ -19,7 +19,12 @@ describe('tool-kit', () => {
     });
   });
 
-  it('toolError rethrows unexpected errors', () => {
-    expect(() => toolError(new Error('boom'))).toThrow('boom');
+  it('toolError hides unexpected errors behind INTERNAL_ERROR', () => {
+    const result = toolError(new Error('connection reset by peer'));
+    expect(result.isError).toBe(true);
+    const body = JSON.parse((result.content[0] as { text: string }).text);
+    expect(body.code).toBe('INTERNAL_ERROR');
+    expect(body.message).not.toContain('connection reset');
+    expect(body.details.ref).toMatch(/^[0-9a-f-]{36}$/);
   });
 });

@@ -1,20 +1,10 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { auth } from '../src/auth/auth.js';
 import { startApp } from './app.js';
+import { connectMcp } from './mcp-client.js';
 import { authorizeAndExchange, refresh, registerClient } from './oauth-flow.js';
 
 const credentials = { email: 'oauth-e2e@example.com', password: 'password-123' };
-
-async function connectMcp(baseUrl: string, accessToken: string): Promise<Client> {
-  const transport = new StreamableHTTPClientTransport(new URL(`${baseUrl}/mcp`), {
-    requestInit: { headers: { Authorization: `Bearer ${accessToken}` } },
-  });
-  const client = new Client({ name: 'e2e', version: '1.0.0' });
-  await client.connect(transport);
-  return client;
-}
 
 describe('OAuth connect → MCP tool call', () => {
   let app: NestExpressApplication;
