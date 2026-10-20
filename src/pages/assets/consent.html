@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cấp quyền · Personal Finance</title>
+    <link rel="stylesheet" href="/assets/style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Cấp quyền truy cập</h1>
+      <p><strong id="client-name"></strong> muốn:</p>
+      <ul id="scopes"></ul>
+      <p id="error" role="alert" hidden></p>
+      <div class="actions" id="consent-actions">
+        <button type="button" id="accept">Đồng ý</button>
+        <button type="button" id="deny">Từ chối</button>
+      </div>
+    </main>
+    <script type="module" src="/assets/consent.js"></script>
+  </body>
+</html>
