@@ -8,5 +8,6 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    server: { deps: { inline: ['zod'] } },
   },
 });
