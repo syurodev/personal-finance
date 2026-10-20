@@ -240,9 +240,9 @@ Revoke connector trong MVP: gỡ trong Claude/ChatGPT; token hết hạn tự nh
 | 9 | `create_category` | write | `name, kind, parent?` | danh mục mới |
 | 10 | `update_category` | write | `category, name?, parent?, archived?` | danh mục sau khi sửa |
 | 11 | `set_budget` | write | `category, amount \| null, from_month?` | hạn mức hiệu lực |
-| 12 | `get_budget_status` | read | `month?` | mỗi danh mục có hạn mức: `limit, spent, remaining, percent`; tổng |
-| 13 | `cashflow_summary` | read | `from, to, type (expense\|income\|all, mặc định all), group_by (category\|account\|merchant\|month\|week\|day)?, compare_previous?` | theo từng currency: `totals {income, expense, net, savings_rate}`, `groups[]`, `previous` (kỳ liền trước cùng độ dài) nếu bật |
-| 14 | `reconcile_account` | write | `account, actual_balance, as_of?` | số dư trước, chênh lệch, id dòng `adjustment` (không tạo nếu chênh lệch = 0) |
+| 12 | `get_budget_status` | read | `month?` | mỗi danh mục có hạn mức: `limit, spent, remaining, percent, status (ok\|warning ≥80%\|over)`; `days_in_month`, `days_elapsed`; tổng (không cộng trùng danh mục con khi cha cũng có hạn mức) |
+| 13 | `cashflow_summary` | read | `from, to, type (expense\|income\|all, mặc định all), group_by (category\|account\|merchant\|month\|week\|day)?, compare_previous?` | theo từng currency: `totals {income, expense, net, savings_rate, count}`, `groups[]` (danh mục gộp về cấp 1), `previous` + `comparison {income_change, expense_change, net_change}` nếu bật (khoảng phủ trọn tháng → các tháng liền trước; khoảng bất kỳ → cùng số ngày) |
+| 14 | `reconcile_account` | write | `account, actual_balance, as_of?` | số dư trước, chênh lệch, dòng `adjustment` (không tạo nếu chênh lệch = 0); khoá dòng ví (`FOR UPDATE`) nên gọi song song không tạo trùng |
 
 `text` trong `search_transactions` tìm `ILIKE` trên `description`, `merchant`, `note` (có
 `unaccent`). `group_by: merchant` gom theo merchant đã chuẩn hoá; dòng không có merchant vào
@@ -250,7 +250,7 @@ nhóm "(không rõ)". `savings_rate = net / income` (null nếu income = 0).
 
 ### 6.3 Prompt
 
-`month_end_review(month?)`: kịch bản tổng kết tháng — hỏi user số dư thực tế từng ví và gọi
+`month_end_review(month?)` (mặc định: tháng trước nếu đang ở 7 ngày đầu tháng, ngược lại tháng này): kịch bản tổng kết tháng — hỏi user số dư thực tế từng ví và gọi
 `reconcile_account` → `cashflow_summary` (group_by category, compare_previous) →
 `get_budget_status` → `get_overview` đầu và cuối tháng → nhận xét và gợi ý.
 
