@@ -1,20 +1,13 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { DomainError } from '../common/domain-error.js';
 import { currentContext } from '../db/request-context.js';
 
-/** Lỗi nghiệp vụ trả về cho agent để nó tự sửa và gọi lại. */
-export class ToolError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-    readonly details?: Record<string, unknown>,
-  ) {
-    super(message);
-  }
-}
+/** Giữ tên ToolError cho code MCP hiện có; domain dùng DomainError. */
+export { DomainError as ToolError };
 
 export function requireScope(scope: string): void {
   if (!currentContext().scopes.includes(scope)) {
-    throw new ToolError('INSUFFICIENT_SCOPE', `Kết nối này chưa được cấp quyền ${scope}. Hãy kết nối lại và cấp quyền.`);
+    throw new DomainError('INSUFFICIENT_SCOPE', `Kết nối này chưa được cấp quyền ${scope}. Hãy kết nối lại và cấp quyền.`);
   }
 }
 
@@ -27,7 +20,7 @@ export function toolResult(data: Record<string, unknown>, summary: string): Call
  * kể cả khi isError, và sẽ ném lỗi nếu không khớp.
  */
 export function toolError(error: unknown): CallToolResult {
-  if (!(error instanceof ToolError)) throw error;
+  if (!(error instanceof DomainError)) throw error;
   const body = { code: error.code, message: error.message, ...(error.details ? { details: error.details } : {}) };
   return { isError: true, content: [{ type: 'text', text: JSON.stringify(body) }] };
 }
