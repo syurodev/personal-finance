@@ -4,7 +4,9 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { getEnv } from '../config/env.js';
 import { db } from '../db/index.js';
+import { runAsUser } from '../db/run-as-user.js';
 import * as authSchema from '../db/schema/auth.js';
+import { seedDefaultCategories } from '../ledger/categories.js';
 import { isEmailAllowed } from './allowlist.js';
 import { AUTH_BASE_PATH, OAUTH_SCOPES, mcpResourceUrl } from './constants.js';
 
@@ -42,6 +44,16 @@ export const auth = betterAuth({
     additionalFields: {
       baseCurrency: { type: 'string', required: false, defaultValue: 'VND', input: false },
       timezone: { type: 'string', required: false, defaultValue: 'Asia/Ho_Chi_Minh', input: false },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        // Chạy sau khi transaction tạo user commit; seed trong ngữ cảnh RLS của chính user đó.
+        after: async (createdUser) => {
+          await runAsUser(db, { userId: createdUser.id, clientId: null, scopes: [] }, () => seedDefaultCategories());
+        },
+      },
     },
   },
   hooks: {
