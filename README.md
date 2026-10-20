@@ -71,9 +71,15 @@ Dockerfile), và dùng Node 24 để chạy Vitest. Mỗi PR/push còn build ima
 `linux/amd64`, chạy migration trên database test riêng và kiểm tra `/healthz`
 với filesystem read-only, user `10001`, không cấp Linux capabilities.
 
-Job publish GHCR chỉ chạy từ `main` sau khi các kiểm tra đều qua. Job deploy
+Job publish GHCR chỉ chạy từ `main` sau khi các kiểm tra đều qua. Job `update-workload`
 bỏ qua revision cũ nếu `main` đã tiến thêm commit, và thử cập nhật workload
 tối đa 3 lần khi có push đồng thời. Có thể chạy lại bằng `workflow_dispatch`
 trên `main` sau khi sửa cấu hình Actions secret. Infisical được ESO đọc lúc
 chạy trên cluster; CI không cần credential database production hay token
 Infisical.
+
+`update-workload` chỉ commit tag image mới vào Git; không kết nối Kubernetes
+và không chạy `kubectl apply`. Argo CD theo dõi commit đó để thực hiện migration
+và rollout trên cluster. Vì vậy token CI chỉ cần quyền ghi repo workload,
+không cần kubeconfig hay quyền truy cập VPS. Kustomize được tải từ release
+chính thức của `kubernetes-sigs/kustomize` và kiểm tra SHA-256 trước khi chạy.

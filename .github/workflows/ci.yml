@@ -97,7 +97,8 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
 
-  deploy:
+  update-workload:
+    name: Update workload image tag (Argo CD deploys)
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
@@ -121,9 +122,22 @@ jobs:
           ref: main
           token: ${{ secrets.WORKLOAD_REPO_TOKEN }}
 
-      - uses: azure/setup-kustomize@v2
-        with:
-          version: v5.8.1
+      - name: Install Kustomize from official release
+        run: |
+          set -euo pipefail
+          version=v5.8.1
+          archive="kustomize_${version}_linux_amd64.tar.gz"
+          release="https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/$version"
+          tool_dir="$RUNNER_TEMP/kustomize"
+          mkdir -p "$tool_dir"
+          curl --fail --silent --show-error --location --retry 3 \
+            "$release/$archive" -o "$tool_dir/$archive"
+          curl --fail --silent --show-error --location --retry 3 \
+            "$release/checksums.txt" -o "$tool_dir/checksums.txt"
+          (cd "$tool_dir" && sha256sum --check --ignore-missing checksums.txt)
+          tar -xzf "$tool_dir/$archive" -C "$tool_dir" kustomize
+          echo "$tool_dir" >> "$GITHUB_PATH"
+          "$tool_dir/kustomize" version
 
       - name: Pin and push image tag
         env:
