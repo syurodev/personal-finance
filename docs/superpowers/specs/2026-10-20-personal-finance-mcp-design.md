@@ -311,3 +311,15 @@ cấu hình theo lỗi thực tế.
 - Postgres không mở ra internet; ổ đĩa mã hoá; backup mã hoá (ví dụ pgBackRest `repo-cipher`).
 - Biến môi trường: `DATABASE_URL` (role `pf_app`), `MIGRATION_DATABASE_URL` (role `pf_owner`),
   `BETTER_AUTH_SECRET`, `BASE_URL`, `ALLOWED_EMAILS`, `PORT`.
+
+### Phiên bản và tương thích MCP tool
+
+- Agent không đọc changelog: mỗi lần kết nối client gọi `tools/list` và làm theo mô tả, schema,
+  `instructions` hiện tại. `CHANGELOG.md` dành cho người.
+- `serverInfo.version` = `package.json` `version` (SemVer). Mỗi bản phát hành cập nhật `CHANGELOG.md`.
+- Không đổi tên/xoá tool, không đổi tên hoặc thêm tham số **bắt buộc**, không đổi nghĩa/xoá trường output.
+  Thêm tool, tham số tuỳ chọn, trường output mới là thay đổi tương thích (minor).
+- Bắt buộc phá vỡ: giữ tool/tham số cũ làm alias ít nhất một minor, trả lỗi `DEPRECATED` có message chỉ
+  tool thay thế khi hết hạn, rồi mới xoá ở major tiếp theo. Lịch sử chat cũ có thể còn gọi tên cũ.
+- Server stateless không gửi `notifications/tools/list_changed`; sau khi phát hành, ghi trong changelog
+  cách client lấy lại danh sách tool. App đã lên store ChatGPT phải nộp lại khi metadata tool đổi.
