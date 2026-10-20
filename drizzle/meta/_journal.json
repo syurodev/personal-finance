@@ -22,6 +22,20 @@
       "when": 1792467970005,
       "tag": "0002_audit_log_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792480983960,
+      "tag": "0003_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792480986731,
+      "tag": "0004_ledger_rls",
+      "breakpoints": true
     }
   ]
 }
