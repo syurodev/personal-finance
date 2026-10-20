@@ -112,3 +112,25 @@ export const ledgerTransaction = pgTable(
     index('ledger_transaction_transfer_group_idx').on(t.transferGroupId),
   ],
 );
+
+export const budget = pgTable(
+  'budget',
+  {
+    id: uuid('id').primaryKey().default(sql`uuidv7()`),
+    userId: ownerId(),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => category.id, { onDelete: 'cascade' }),
+    /** Hạn mức tháng; null = bỏ hạn mức từ effective_from. */
+    amount: numeric('amount'),
+    currency: text('currency').notNull(),
+    /** 'YYYY-MM': áp dụng từ tháng này cho tới dòng mới hơn của cùng danh mục. */
+    effectiveFrom: text('effective_from').notNull(),
+    ...timestamps(),
+  },
+  (t) => [
+    check('budget_effective_from_format', sql`${t.effectiveFrom} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
+    check('budget_amount_positive', sql`${t.amount} is null or ${t.amount} > 0`),
+    uniqueIndex('budget_user_category_month_uidx').on(t.userId, t.categoryId, t.effectiveFrom),
+  ],
+);

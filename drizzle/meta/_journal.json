@@ -36,6 +36,20 @@
       "when": 1792480986731,
       "tag": "0004_ledger_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792485022613,
+      "tag": "0005_budget",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792485025848,
+      "tag": "0006_budget_rls",
+      "breakpoints": true
     }
   ]
 }
