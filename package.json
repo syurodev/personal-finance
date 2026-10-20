@@ -1,6 +1,7 @@
 {
   "name": "personal-finance",
   "version": "0.3.0",
+  "packageManager": "bun@1.4.2",
   "description": "",
   "author": "",
   "private": true,

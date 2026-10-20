@@ -43,3 +43,37 @@ URL quick tunnel đổi mỗi lần chạy `cloudflared`; khi đổi phải cậ
 
 - Production đặt sau reverse proxy HTTPS; Postgres không mở ra internet; ổ đĩa và backup được mã hoá.
 - `DATABASE_URL` dùng role `pf_app` (bị RLS); migration dùng `MIGRATION_DATABASE_URL` (role `pf_owner`).
+
+## Deploy (server + ArgoCD)
+
+Pipeline một file duy nhất: `.github/workflows/ci.yml`.
+
+- **PR & push (mọi branch)**: Postgres service chạy với init SQL `docker/postgres/init`
+  (tạo `pf_owner`/`pf_app`), chạy `typecheck` → `lint` → `test` → `test:int` → `test:e2e`.
+- **Push lên main (sau khi test xanh)**: build `Dockerfile` → push
+  `ghcr.io/syurodev/personal-finance:sha-<commit>` (GHCR, dùng `GITHUB_TOKEN`)
+  → commit tag đó vào manifest `personal-finance/dev/server` của repo
+  [syurodev/workload](https://github.com/syurodev/workload).
+
+ArgoCD theo dõi workload repo (ApplicationSet `personal-finance-services-dev`,
+namespace `personal-finance` trên cluster): mỗi lần tag được pin, PreSync
+Migration Job chạy `bun src/db/migrate-cli.ts` với `MIGRATION_DATABASE_URL`
+(role `pf_owner`), rồi Deployment pf-server rollout bằng `DATABASE_URL`
+(role `pf_app`). Secrets lấy từ Infisical qua External Secrets — chi tiết
+bootstrap và các key cần tạo xem `personal-finance/README.md` trong workload
+repo.
+
+**Một lần cấu hình**: thêm secret repo `WORKLOAD_REPO_TOKEN` (PAT có
+`contents:write` trên `syurodev/workload`) vào repo này.
+
+CI ghim Bun theo `packageManager` trong `package.json` (cùng phiên bản với
+Dockerfile), và dùng Node 24 để chạy Vitest. Mỗi PR/push còn build image
+`linux/amd64`, chạy migration trên database test riêng và kiểm tra `/healthz`
+với filesystem read-only, user `10001`, không cấp Linux capabilities.
+
+Job publish GHCR chỉ chạy từ `main` sau khi các kiểm tra đều qua. Job deploy
+bỏ qua revision cũ nếu `main` đã tiến thêm commit, và thử cập nhật workload
+tối đa 3 lần khi có push đồng thời. Có thể chạy lại bằng `workflow_dispatch`
+trên `main` sau khi sửa cấu hình Actions secret. Infisical được ESO đọc lúc
+chạy trên cluster; CI không cần credential database production hay token
+Infisical.
