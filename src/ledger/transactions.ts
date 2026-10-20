@@ -458,6 +458,8 @@ export async function reconcileAccount(input: { account: string; actualBalance: 
 }> {
   const { tx, userId, clientId } = currentContext();
   const account = await resolveAccount(input.account);
+  // Khoá dòng ví tới hết transaction: lần đối soát song song phải chờ và đọc số dư đã có điều chỉnh.
+  await tx.execute(sql`select 1 from ledger_account where id = ${account.id} for update`);
   const currency = parseCurrency(account.currency);
   const actual = parseAmount(input.actualBalance, currency, { allowNegative: true, allowZero: true });
   const asOf = input.asOf ? parseIsoDate(input.asOf, 'as_of') : await today();
