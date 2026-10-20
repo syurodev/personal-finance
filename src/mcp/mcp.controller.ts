@@ -39,10 +39,15 @@ export class McpController {
     try {
       authInfo = await this.mcpAuth.verify(req.headers.authorization);
     } catch (error) {
-      if (error instanceof InvalidAccessTokenError) return sendUnauthorized(res);
+      if (error instanceof InvalidAccessTokenError) {
+        this.logger.warn(`Rejected bearer token: ${error.message}`);
+        return sendUnauthorized(res);
+      }
       throw error;
     }
     req.auth = authInfo;
+    const rpcMethod = (req.body as { method?: unknown } | undefined)?.method;
+    this.logger.log(`rpc=${typeof rpcMethod === 'string' ? rpcMethod : 'batch/unknown'} client=${authInfo.clientId}`);
     const actor = {
       userId: authInfo.extra?.userId as string,
       clientId: authInfo.clientId || null,
