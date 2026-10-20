@@ -89,7 +89,7 @@ category
   archived_at null
   unique (user_id, kind, parent_id, lower(name)) where archived_at is null
 
-transaction
+ledger_transaction   (tránh từ khoá SQL `transaction`)
   id, user_id, account_id → ledger_account,
   kind ('standard'|'transfer'|'adjustment'),
   category_id null → category,      -- chỉ cho kind='standard'
@@ -132,7 +132,9 @@ audit_log
 - **Không quy đổi tiền tệ trong MVP**: mọi phép tổng hợp (tổng tài sản, cashflow, nhóm,
   so sánh kỳ) tách riêng theo `currency`; không bao giờ cộng hai currency với nhau.
   Ngân sách có `currency` = `user.base_currency` và chỉ tính giao dịch cùng currency.
-- **Danh mục mặc định** seed khi tạo user:
+- **Danh mục tối đa 2 cấp**: danh mục cha phải là danh mục cấp 1 cùng `kind`.
+- **Danh mục mặc định** seed khi tạo user (hook `databaseHooks.user.create.after`;
+  user có từ trước dùng `bun run db:seed-categories`):
   chi — Ăn uống, Đi lại, Nhà ở, Hoá đơn & tiện ích, Mua sắm, Giải trí, Sức khoẻ, Giáo dục,
   Gia đình, Quà tặng & từ thiện, Khác; thu — Lương, Thưởng, Lãi & đầu tư, Thu khác.
 - **Xoá** là xoá mềm (`deleted_at`). Xoá một dòng transfer xoá cả cặp.
@@ -232,7 +234,7 @@ Revoke connector trong MVP: gỡ trong Claude/ChatGPT; token hết hạn tự nh
 | 3 | `record_transfer` | write | `from_account, to_account, amount, occurred_on?, note?, fee?, fee_category?` | `transfer_group_id`, số dư mới 2 ví |
 | 4 | `update_transaction` | write | `id` + các field cần sửa (`amount, type, account, category, occurred_on, description, merchant, note`) | dòng sau khi sửa. Dòng transfer chỉ sửa được `amount, occurred_on, note` và áp cho cả cặp |
 | 5 | `delete_transaction` | write | `id, restore?` | trạng thái mới; transfer xoá/khôi phục cả cặp |
-| 6 | `search_transactions` | read | `from?, to?, account?, category? (gồm con), type?, kind?, min_amount?, max_amount?, text?, sort (date_desc\|date_asc\|amount_desc\|amount_asc), limit≤200, cursor?, include_deleted?` | danh sách + `next_cursor` + tổng của tập kết quả |
+| 6 | `search_transactions` | read | `from?, to?, account?, category? (gồm con), type?, kind?, min_amount?, max_amount?, text?, sort (date_desc\|date_asc\|amount_desc\|amount_asc), limit≤200, cursor?, include_deleted?` | danh sách + `next_cursor` (phân trang offset) + `total_count` + `totals[{currency, count, inflow, outflow}]` của toàn bộ kết quả |
 | 7 | `create_account` | write | `type, name, currency?, opening_balance?` | ví mới |
 | 8 | `update_account` | write | `account, name?, archived?` | ví sau khi sửa |
 | 9 | `create_category` | write | `name, kind, parent?` | danh mục mới |
@@ -262,15 +264,16 @@ nó theo `outputSchema` kể cả khi `isError`). Mỗi lần gọi tool ghi ch�
 `ACCOUNT_NOT_FOUND`, `AMBIGUOUS_ACCOUNT`, `CATEGORY_NOT_FOUND`, `AMBIGUOUS_CATEGORY`,
 `CATEGORY_KIND_MISMATCH`, `CURRENCY_MISMATCH`, `UNSUPPORTED_CURRENCY`,
 `INVALID_AMOUNT`, `INVALID_AMOUNT_SCALE`, `INVALID_DATE_RANGE`, `TRANSACTION_NOT_FOUND`,
-`ACCOUNT_ARCHIVED`, `SAME_ACCOUNT_TRANSFER`, `INSUFFICIENT_SCOPE`, `VALIDATION_ERROR`.
+`ACCOUNT_ARCHIVED`, `SAME_ACCOUNT_TRANSFER`, `INSUFFICIENT_SCOPE`, `VALIDATION_ERROR`,
+`DUPLICATE_NAME`, `INTERNAL_ERROR` (kèm `details.ref` để tra log).
 
 Lỗi hệ thống (DB, bug) → log đầy đủ ở server kèm request id; agent nhận `INTERNAL_ERROR`
 và request id, không lộ chi tiết.
 
 ## 7. Audit
 
-Mỗi tool ghi thành công thêm `audit_log` (action = tên tool, entity, entity_id, client id)
-trong cùng transaction. Không lưu payload.
+Mỗi thao tác ghi thành công thêm `audit_log` (action dạng `transaction.create`,
+`account.reconcile`…, entity, entity_id, client id) trong cùng transaction. Không lưu payload.
 
 ## 8. Testing
 
