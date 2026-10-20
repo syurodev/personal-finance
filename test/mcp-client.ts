@@ -33,3 +33,22 @@ export async function callError(
   if (!result.isError) throw new Error(`${name} unexpectedly succeeded`);
   return JSON.parse(firstText(result));
 }
+
+/** Mọi tool server phải công bố (so khớp chính xác trong e2e). */
+export const ALL_TOOLS = [
+  'whoami',
+  'get_overview',
+  'create_account',
+  'update_account',
+  'create_category',
+  'update_category',
+  'record_transactions',
+  'record_transfer',
+  'update_transaction',
+  'delete_transaction',
+  'search_transactions',
+  'reconcile_account',
+  'set_budget',
+  'get_budget_status',
+  'cashflow_summary',
+];

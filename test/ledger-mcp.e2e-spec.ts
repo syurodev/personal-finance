@@ -2,25 +2,10 @@ import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { auth } from '../src/auth/auth.js';
 import { startApp } from './app.js';
-import { callError, callOk, connectMcp } from './mcp-client.js';
+import { ALL_TOOLS, callError, callOk, connectMcp } from './mcp-client.js';
 import { authorizeAndExchange, registerClient } from './oauth-flow.js';
 
 const credentials = { email: 'ledger-e2e@example.com', password: 'password-123' };
-
-const LEDGER_TOOLS = [
-  'whoami',
-  'get_overview',
-  'create_account',
-  'update_account',
-  'create_category',
-  'update_category',
-  'record_transactions',
-  'record_transfer',
-  'update_transaction',
-  'delete_transaction',
-  'search_transactions',
-  'reconcile_account',
-];
 
 describe('ledger over MCP: one month of usage', () => {
   let app: NestExpressApplication;
@@ -40,7 +25,7 @@ describe('ledger over MCP: one month of usage', () => {
     client = await connectMcp(baseUrl, tokens.access_token);
     // listTools bật kiểm tra outputSchema phía client cho mọi lần gọi sau.
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual([...LEDGER_TOOLS].sort());
+    expect(tools.map((t) => t.name).sort()).toEqual([...ALL_TOOLS].sort());
   });
 
   afterAll(async () => {

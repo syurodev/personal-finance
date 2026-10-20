@@ -8,6 +8,23 @@ Quy tắc tương thích cho MCP tool: xem spec §10 (`docs/superpowers/specs/20
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
+Ngân sách, báo cáo thu chi và kịch bản tổng kết tháng.
+
+### Added
+- MCP tool `set_budget`, `get_budget_status`, `cashflow_summary`.
+- MCP prompt `month_end_review` (đối soát → thu chi so với tháng trước → ngân sách → khoản chi lớn → nhận xét).
+- Bảng `budget` (RLS): hạn mức tháng theo danh mục chi, áp dụng từ một tháng cho tới khi đặt lại; danh mục con tính vào danh mục cha.
+- `get_overview` có thêm trường `budget` (tóm tắt ngân sách tháng chứa `as_of`, `null` nếu chưa đặt).
+
+### Fixed
+- `reconcile_account` khoá dòng ví khi đối soát: gọi song song không còn tạo nhiều dòng điều chỉnh.
+
+### Migration
+- `bun run db:migrate` (thêm `0005_budget`, `0006_budget_rls`).
+- Client lấy lại danh sách tool: Claude — cuộc trò chuyện mới; ChatGPT — refresh/scan lại MCP server.
+
 ## [0.2.0] - 2026-10-20
 
 Ledger: agent quản lý ví, danh mục và giao dịch qua MCP.
