@@ -12,7 +12,8 @@ export function buildReviewScript(month: string): string {
     `2. Gọi cashflow_summary với from=${from}, to=${to}, group_by=category, compare_previous=true. Trình bày tổng thu, tổng chi, phần để dành và tỷ lệ tiết kiệm; 5 danh mục chi lớn nhất; danh mục tăng/giảm nhiều nhất so với kỳ trước.`,
     `3. Gọi get_budget_status với month=${month}. Nêu các danh mục vượt (over) hoặc sắp vượt (warning) ngân sách.`,
     `4. Gọi search_transactions với from=${from}, to=${to}, type=expense, sort=amount_desc, limit=5 để nêu 5 khoản chi lớn nhất.`,
-    '5. Nhận xét ngắn gọn và đề xuất 1–3 điều chỉnh. Nếu đề xuất ngân sách cho tháng sau, chỉ gọi set_budget khi tôi đồng ý.',
+    '5. Gọi list_upcoming_payments để nêu các kỳ trả nợ quá hạn và đến hạn trong 30 ngày tới (nếu có khoản vay).',
+    '6. Nhận xét ngắn gọn và đề xuất 1–3 điều chỉnh. Nếu đề xuất ngân sách cho tháng sau, chỉ gọi set_budget khi tôi đồng ý.',
     'Dùng đúng số liệu tool trả về, không tự cộng trừ lại.',
   ].join('\n');
 }

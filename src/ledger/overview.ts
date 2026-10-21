@@ -7,6 +7,8 @@ import { accountBalances, loadAccounts, toAccountView } from './accounts.js';
 import { getBudgetStatus } from './budgets.js';
 import { categoryTree } from './categories.js';
 import { getUserSettings } from './user-settings.js';
+import { debtSummary } from '../loans/loans.js';
+import type { DebtSummary } from '../loans/views.js';
 import type { AccountView, CategoryNode } from './views.js';
 
 export type BudgetSummary = {
@@ -30,6 +32,8 @@ export type Overview = {
   categories: CategoryNode[];
   /** Ngân sách của tháng chứa as_of; null nếu tháng đó không có ngân sách. */
   budget: BudgetSummary | null;
+  /** Nợ và khoản cho vay đang chạy; null nếu không có khoản vay. */
+  debts: DebtSummary | null;
 };
 
 export async function getOverview(asOf?: string): Promise<Overview> {
@@ -70,5 +74,6 @@ export async function getOverview(asOf?: string): Promise<Overview> {
       .map(([currency, total]) => ({ currency, total: formatAmount(total, currency) })),
     categories: await categoryTree(),
     budget,
+    debts: await debtSummary(date),
   };
 }

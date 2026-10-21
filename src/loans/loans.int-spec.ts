@@ -2,6 +2,7 @@ import { pool } from '../db/index.js';
 import { asUser, createTestUser } from '../../test/fixtures.js';
 import { accountBalances, createAccount, loadAccounts } from '../ledger/accounts.js';
 import { searchTransactions } from '../ledger/transactions.js';
+import { getOverview } from '../ledger/overview.js';
 import { createLoan, getLoanStatus, listUpcomingPayments } from './loans.js';
 
 describe('loans: create, status, upcoming', () => {
@@ -155,5 +156,15 @@ describe('loans: create, status, upcoming', () => {
       { currency: 'VND', direction: 'borrow', amount: '6216185' },
       { currency: 'VND', direction: 'lend', amount: '5000000' },
     ]);
+  });
+
+  it('summarises debts in the overview', async () => {
+    const overview = await asUser(alice, () => getOverview('2026-11-15'));
+    // Vay: iPhone 24.000.000 + tín chấp 11.500.000 + tiêu dùng 3.198.555; cho vay: 5.000.000.
+    expect(overview.debts).toEqual({
+      items: [{ currency: 'VND', borrowed: '38698555', lent: '5000000' }],
+      next_due: { loan: 'Trả góp iPhone', direction: 'borrow', due_date: '2026-11-01', amount: '2000000', currency: 'VND' },
+      overdue_count: 4,
+    });
   });
 });

@@ -44,6 +44,7 @@ describe('getOverview', () => {
       { currency: 'VND', total: '900000' },
     ]);
     expect(overview.categories).toHaveLength(15);
+    expect(overview.debts).toBeNull();
   });
 
   it('summarises the budget of the as_of month', async () => {
