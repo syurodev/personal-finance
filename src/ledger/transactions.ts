@@ -52,7 +52,7 @@ async function toViews(rows: readonly TransactionRow[]): Promise<TransactionView
   });
 }
 
-async function balancesFor(accountIds: readonly string[]): Promise<AccountBalanceView[]> {
+export async function balancesFor(accountIds: readonly string[]): Promise<AccountBalanceView[]> {
   const accounts = await loadAccounts({ includeArchived: true });
   const balances = await accountBalances();
   return [...new Set(accountIds)].flatMap((id) => {
