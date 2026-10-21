@@ -4,28 +4,35 @@ Ngày: 2026-10-21 · Bổ sung cho `2026-10-20-personal-finance-mcp-design.md` �
 
 ## 1. Mục tiêu
 
-Agent trả lời được "còn nợ bao nhiêu, còn mấy kỳ", "tháng này phải trả gì", "tổng lãi phải trả",
-ghi một kỳ trả bằng một lệnh (tự tách gốc/lãi), và xử lý trả trước hạn, lãi thả nổi.
+Agent trả lời được "còn nợ bao nhiêu, còn mấy kỳ", "tháng này phải trả gì", ghi một kỳ trả bằng một
+lệnh, và xử lý trả dư/thiếu, tất toán sớm, ngân hàng đổi số tiền kỳ.
 
-**Ngoài phạm vi:** giao dịch định kỳ chung (tính năng F), nhắc hạn chủ động (server chỉ trả lời khi
-được gọi — nhắc qua `instructions`, `get_overview` và prompt `month_end_review`), tính lãi theo số ngày
-thực tế (người dùng nhập đè lãi thật khi ghi kỳ), phạt trả chậm.
+**Nguyên tắc: chỉ quản lý số tiền phải trả mỗi kỳ (đã gồm lãi).** Không có lãi suất, không tách
+gốc/lãi theo kỳ. Chi phí vay (tổng phải trả − tiền thực nhận) được ghi **một lần** thành khoản chi để
+tổng tài sản và báo cáo chi tiêu đúng.
+
+**Ngoài phạm vi:** lãi suất và cách tính lãi, tách gốc/lãi từng kỳ, ước tính tiết kiệm khi trả trước,
+giao dịch định kỳ chung (tính năng F), nhắc hạn chủ động (server chỉ trả lời khi được gọi — nhắc qua
+`instructions`, `get_overview` và prompt `month_end_review`), phạt trả chậm.
 
 ## 2. Quyết định chính
 
 | Chủ đề | Quyết định |
 |---|---|
 | Chiều | `borrow` (đi vay, trả góp) và `lend` (cho vay) |
-| Cách tính | `equal_principal` (gốc đều, lãi trên dư nợ giảm dần), `annuity` (trả đều mỗi kỳ, dư nợ giảm dần), `flat` (lãi phẳng trên gốc ban đầu). Trả góp 0% = `flat` với `annual_rate = 0` |
-| Lãi suất | `annual_rate` % năm, lãi kỳ = dư nợ (hoặc gốc ban đầu với `flat`) × rate / 1200, làm tròn half-up theo currency |
+| Khai báo | `installment_amount` (tiền mỗi kỳ) **hoặc** `total_payable` (tổng phải trả, chia đều, kỳ cuối nhận phần lẻ) + `term_months` + ngày kỳ đầu |
 | Kỳ | Hằng tháng; kỳ đầu mặc định 1 tháng sau `start_date`; giữ ngày trong tháng, kẹp về ngày cuối tháng |
-| Ví nợ | Mỗi khoản vay tự tạo một ví loại mới `loan` (cùng tên). Vay: số dư âm = dư nợ; cho vay: số dư dương = phải thu. `net_worth` tự phản ánh |
-| Giải ngân | `cash` — chuyển khoản giữa ví nợ và ví nhận/chi tiền; `purchase` — mua hàng trả góp: một khoản chi trên ví nợ thuộc danh mục món hàng (báo cáo chi tiêu thấy ngay); `existing` — khoản vay đang chạy: nhập số kỳ đã trả, ví nợ mở với số dư = dư nợ còn lại, không tạo giao dịch |
-| Ghi một kỳ | Gốc = chuyển khoản ví trả ↔ ví nợ; lãi = khoản chi (vay, danh mục "Lãi & phí vay") hoặc khoản thu (cho vay, "Lãi cho vay") — danh mục tự tạo khi cần. Gốc/lãi mặc định theo lịch, nhập đè được |
-| Trả thêm gốc / lãi suất mới | Tính lại các kỳ chưa trả trên dư nợ mới, giữ số kỳ và ngày đến hạn (giảm tiền mỗi kỳ). Hết dư nợ → tất toán, xoá các kỳ còn lại |
-| Bất biến | Dư nợ = tổng `principal_due` các kỳ `due` |
+| Ví nợ | Mỗi khoản vay tự tạo một ví loại mới `loan` (cùng tên). Bất biến: số dư ví nợ = −(tổng các kỳ chưa trả) với vay, + với cho vay |
+| Giải ngân `cash` | Chuyển `cash_amount` (tiền thực nhận/thực đưa, mặc định = tổng phải trả) giữa ví nợ và `disbursement_account`; phần chênh lệch → một khoản chi "Lãi & phí vay" (vay) hoặc khoản thu "Lãi cho vay" (cho vay) trên ví nợ |
+| Giải ngân `purchase` | Mua hàng trả góp: một khoản chi bằng tổng phải trả trên ví nợ, thuộc danh mục món hàng |
+| Giải ngân `existing` | Khoản vay đang chạy: nhập số kỳ đã trả; ví nợ mở với số dư = phần còn phải trả, không tạo giao dịch |
+| Ghi một kỳ | Một chuyển khoản ví trả ↔ ví nợ; số tiền mặc định = tiền kỳ |
+| Trả dư | Phần dư trừ dần vào các kỳ **cuối** (kỳ về 0 thì bỏ) → số kỳ còn lại giảm |
+| Trả thiếu | Phần thiếu cộng vào kỳ kế tiếp (không còn kỳ nào thì thêm một kỳ tháng sau) |
+| Tất toán sớm (`payoff`) | Trả số tiền thực tế; phần được miễn ghi thành dòng `adjustment` trên ví nợ; đóng khoản vay |
+| Đổi tiền kỳ (lãi thả nổi) | Mọi kỳ chưa trả lấy số tiền mới; chênh lệch tổng → khoản chi/thu "Lãi & phí vay"/"Lãi cho vay" nếu tăng, `adjustment` nếu giảm |
 | An toàn đồng thời | Ghi kỳ / sửa / huỷ khoá dòng `loan` (`FOR UPDATE`) |
-| Huỷ | Chỉ khi chưa ghi kỳ nào qua tool: xoá mềm giao dịch giải ngân, lưu trữ ví nợ, trạng thái `cancelled` |
+| Huỷ | Chỉ khi chưa ghi kỳ nào qua tool: xoá mềm giao dịch giải ngân và chi phí, lưu trữ ví nợ, trạng thái `cancelled` |
 
 ## 3. Dữ liệu (RLS theo `user_id`, như các bảng khác)
 
@@ -33,28 +40,27 @@ thực tế (người dùng nhập đè lãi thật khi ghi kỳ), phạt trả 
 ledger_account.type   + 'loan'
 
 loan
-  id, user_id, name, direction, method, principal numeric, currency, annual_rate numeric,
-  term_months int, start_date, first_due_date, account_id → ledger_account (ví nợ),
-  payment_account_id? → ledger_account, disbursement_transaction_id? → ledger_transaction,
+  id, user_id, name, direction, total_payable numeric, currency, term_months int,
+  start_date, first_due_date, account_id → ledger_account (ví nợ),
+  payment_account_id? → ledger_account, disbursement_transaction_id?, cost_transaction_id? → ledger_transaction,
   status ('active'|'closed'|'cancelled'), closed_at?, created_at, updated_at
   unique (user_id, lower(name)) where status = 'active'
 
 loan_installment
-  id, user_id, loan_id → loan (cascade), seq, due_date, principal_due, interest_due,
-  status ('due'|'paid'), paid_on?, principal_paid?, interest_paid?,
-  principal_transfer_group_id?, interest_transaction_id?, fee_transaction_id?
+  id, user_id, loan_id → loan (cascade), seq, due_date, amount_due numeric (> 0),
+  status ('due'|'paid'), paid_on?, amount_paid?, transfer_group_id?
   unique (loan_id, seq)
 ```
 
-Kỳ đã trả trước khi theo dõi (`existing`): `status = 'paid'`, không có giao dịch.
+Kỳ đã trả trước khi theo dõi (`existing`): `status = 'paid'`, không có `transfer_group_id`.
 
 ## 4. MCP tools (thêm 6, tổng 21)
 
 | Tool | Scope | Mục đích |
 |---|---|---|
 | `create_loan` | write | Tạo khoản vay/trả góp/cho vay, ví nợ và lịch trả |
-| `record_loan_payment` | write | Ghi kỳ kế tiếp: gốc + lãi (+ trả thêm gốc, phí), tất toán khi hết nợ |
-| `update_loan` | write | Đổi tên, ví trả mặc định, lãi suất (tính lại kỳ chưa trả) |
+| `record_loan_payment` | write | Ghi kỳ kế tiếp (mặc định đúng tiền kỳ; trả dư/thiếu; `payoff` để tất toán) |
+| `update_loan` | write | Đổi tên, ví trả mặc định, tiền mỗi kỳ từ kỳ tới |
 | `cancel_loan` | write, destructive | Huỷ khoản vay tạo nhầm (chưa có kỳ nào được ghi) |
 | `get_loan_status` | read | Tất cả khoản vay đang chạy, hoặc chi tiết một khoản kèm lịch trả |
 | `list_upcoming_payments` | read | Các kỳ quá hạn và đến hạn trong N ngày, tổng theo currency/chiều |
