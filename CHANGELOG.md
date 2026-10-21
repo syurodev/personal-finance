@@ -8,6 +8,21 @@ Quy tắc tương thích cho MCP tool: xem spec §10 (`docs/superpowers/specs/20
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-21
+
+Khoản vay, trả góp và cho vay — theo dõi theo số tiền mỗi kỳ (đã gồm lãi).
+
+### Added
+- MCP tool `create_loan`, `record_loan_payment`, `update_loan`, `cancel_loan`, `get_loan_status`, `list_upcoming_payments`.
+- Khai báo bằng tiền mỗi kỳ hoặc tổng phải trả; giải ngân `cash` (chênh lệch với tiền thực nhận ghi một lần là "Lãi & phí vay"), `purchase` (mua hàng trả góp, tính vào chi tiêu theo danh mục) hoặc `existing` (khoản vay đang chạy).
+- Trả dư trừ vào các kỳ cuối, trả thiếu cộng vào kỳ sau, tất toán sớm có miễn giảm, đổi tiền kỳ khi ngân hàng đổi lãi suất.
+- Loại ví `loan` (ví nợ tự tạo); danh mục hệ thống "Lãi & phí vay", "Lãi cho vay" tự tạo khi cần.
+- `get_overview` có thêm trường `debts`; prompt `month_end_review` nhắc các kỳ trả sắp đến hạn.
+
+### Migration
+- `bun run db:migrate` (thêm `0007_loans`, `0008_loans_rls`).
+- Client lấy lại danh sách tool: Claude — cuộc trò chuyện mới; ChatGPT — refresh/scan lại MCP server.
+
 ## [0.3.0] - 2026-10-20
 
 Ngân sách, báo cáo thu chi và kịch bản tổng kết tháng.
