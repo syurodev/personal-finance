@@ -4,6 +4,7 @@ import {
   check,
   date,
   index,
+  integer,
   numeric,
   pgTable,
   text,
@@ -13,7 +14,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { user } from './auth.js';
 
-export const ACCOUNT_TYPES = ['cash', 'bank', 'credit_card', 'ewallet'] as const;
+export const ACCOUNT_TYPES = ['cash', 'bank', 'credit_card', 'ewallet', 'loan'] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
 export const CATEGORY_KINDS = ['expense', 'income'] as const;
@@ -48,7 +49,7 @@ export const ledgerAccount = pgTable(
     ...timestamps(),
   },
   (t) => [
-    check('ledger_account_type_check', sql`${t.type} in ('cash', 'bank', 'credit_card', 'ewallet')`),
+    check('ledger_account_type_check', sql`${t.type} in ('cash', 'bank', 'credit_card', 'ewallet', 'loan')`),
     uniqueIndex('ledger_account_user_name_uidx')
       .on(t.userId, sql`lower(${t.name})`)
       .where(sql`${t.archivedAt} is null`),
@@ -132,5 +133,76 @@ export const budget = pgTable(
     check('budget_effective_from_format', sql`${t.effectiveFrom} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`),
     check('budget_amount_positive', sql`${t.amount} is null or ${t.amount} > 0`),
     uniqueIndex('budget_user_category_month_uidx').on(t.userId, t.categoryId, t.effectiveFrom),
+  ],
+);
+
+export const LOAN_DIRECTIONS = ['borrow', 'lend'] as const;
+export type LoanDirection = (typeof LOAN_DIRECTIONS)[number];
+
+export const LOAN_STATUSES = ['active', 'closed', 'cancelled'] as const;
+export type LoanStatus = (typeof LOAN_STATUSES)[number];
+
+export const INSTALLMENT_STATUSES = ['due', 'paid'] as const;
+
+export const loan = pgTable(
+  'loan',
+  {
+    id: uuid('id').primaryKey().default(sql`uuidv7()`),
+    userId: ownerId(),
+    name: text('name').notNull(),
+    direction: text('direction', { enum: LOAN_DIRECTIONS }).notNull(),
+    /** Tổng phải trả ban đầu (đã gồm lãi và phí). */
+    totalPayable: numeric('total_payable').notNull(),
+    currency: text('currency').notNull(),
+    termMonths: integer('term_months').notNull(),
+    startDate: date('start_date', { mode: 'string' }).notNull(),
+    firstDueDate: date('first_due_date', { mode: 'string' }).notNull(),
+    /** Ví nợ (vay: số dư âm) hoặc ví phải thu (cho vay: số dư dương), tự tạo cùng khoản vay. */
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => ledgerAccount.id, { onDelete: 'restrict' }),
+    paymentAccountId: uuid('payment_account_id').references(() => ledgerAccount.id, { onDelete: 'restrict' }),
+    disbursementTransactionId: uuid('disbursement_transaction_id').references(() => ledgerTransaction.id, {
+      onDelete: 'set null',
+    }),
+    /** Khoản chi/thu "Lãi & phí vay"/"Lãi cho vay" ghi lúc tạo (tổng phải trả − tiền thực nhận/đưa). */
+    costTransactionId: uuid('cost_transaction_id').references(() => ledgerTransaction.id, { onDelete: 'set null' }),
+    status: text('status', { enum: LOAN_STATUSES }).notNull().default('active'),
+    closedAt: timestamp('closed_at', { withTimezone: true }),
+    ...timestamps(),
+  },
+  (t) => [
+    check('loan_direction_check', sql`${t.direction} in ('borrow', 'lend')`),
+    check('loan_status_check', sql`${t.status} in ('active', 'closed', 'cancelled')`),
+    check('loan_total_positive', sql`${t.totalPayable} > 0`),
+    check('loan_term_range', sql`${t.termMonths} between 1 and 600`),
+    uniqueIndex('loan_user_name_uidx')
+      .on(t.userId, sql`lower(${t.name})`)
+      .where(sql`${t.status} = 'active'`),
+  ],
+);
+
+export const loanInstallment = pgTable(
+  'loan_installment',
+  {
+    id: uuid('id').primaryKey().default(sql`uuidv7()`),
+    userId: ownerId(),
+    loanId: uuid('loan_id')
+      .notNull()
+      .references(() => loan.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    dueDate: date('due_date', { mode: 'string' }).notNull(),
+    amountDue: numeric('amount_due').notNull(),
+    status: text('status', { enum: INSTALLMENT_STATUSES }).notNull().default('due'),
+    paidOn: date('paid_on', { mode: 'string' }),
+    amountPaid: numeric('amount_paid'),
+    transferGroupId: uuid('transfer_group_id'),
+    ...timestamps(),
+  },
+  (t) => [
+    check('loan_installment_status_check', sql`${t.status} in ('due', 'paid')`),
+    check('loan_installment_amount_positive', sql`${t.amountDue} > 0`),
+    uniqueIndex('loan_installment_loan_seq_uidx').on(t.loanId, t.seq),
+    index('loan_installment_user_due_idx').on(t.userId, t.status, t.dueDate),
   ],
 );

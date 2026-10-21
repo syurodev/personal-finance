@@ -8,9 +8,9 @@ export function isUuid(value: string): boolean {
 }
 
 export type Named = { id: string; name: string };
-export type ResolvableEntity = 'ACCOUNT' | 'CATEGORY';
+export type ResolvableEntity = 'ACCOUNT' | 'CATEGORY' | 'LOAN';
 
-const LABEL: Record<ResolvableEntity, string> = { ACCOUNT: 'ví', CATEGORY: 'danh mục' };
+const LABEL: Record<ResolvableEntity, string> = { ACCOUNT: 'ví', CATEGORY: 'danh mục', LOAN: 'khoản vay' };
 
 /**
  * Tìm bản ghi theo id hoặc tên. Thứ tự: id → tên khớp hẳn → tiền tố duy nhất → chuỗi con duy nhất.

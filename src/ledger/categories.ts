@@ -168,3 +168,14 @@ export async function updateCategory(
   await recordAudit('category.update', 'category', [row!.id]);
   return toCategoryView(row!);
 }
+
+/** Tìm danh mục cấp 1 cùng kind theo tên (không dấu); chưa có thì tạo. Dùng cho danh mục hệ thống. */
+export async function ensureCategory(name: string, kind: CategoryKind): Promise<CategoryRow> {
+  const key = normalizeName(name);
+  const existing = (await loadCategories()).find(
+    (row) => row.kind === kind && row.parentId === null && normalizeName(row.name) === key,
+  );
+  if (existing) return existing;
+  const created = await createCategory({ name, kind });
+  return (await loadCategories()).find((row) => row.id === created.id)!;
+}

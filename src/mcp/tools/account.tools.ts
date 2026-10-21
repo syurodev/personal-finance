@@ -14,7 +14,7 @@ export function registerAccountTools(server: McpServer): void {
       description:
         'Tạo ví/tài khoản mới (tiền mặt, ngân hàng, thẻ tín dụng, ví điện tử). Chỉ gọi khi người dùng đồng ý tạo ví.',
       inputSchema: {
-        type: z.enum(ACCOUNT_TYPES).describe('cash | bank | credit_card | ewallet'),
+        type: z.enum(ACCOUNT_TYPES).describe('cash | bank | credit_card | ewallet | loan (ví loan thường do create_loan tự tạo)'),
         name: z.string().describe('Tên ví, ví dụ "Vietcombank", "Momo"'),
         currency: z.string().optional().describe('Mã tiền tệ (VND, USD, …); mặc định là tiền tệ của người dùng'),
         opening_balance: signedAmountInput.optional().describe('Số dư ban đầu; thẻ tín dụng đang nợ thì để số âm'),
