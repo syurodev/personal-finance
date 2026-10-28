@@ -49,7 +49,7 @@ export function registerLoanTools(server: McpServer): void {
     {
       title: 'Tạo khoản vay / trả góp / cho vay',
       description:
-        'Tạo khoản vay (borrow) hoặc cho vay (lend) theo số tiền phải trả mỗi kỳ (đã gồm lãi); tự tạo ví nợ cùng tên và lịch trả hằng tháng. Truyền installment_amount HOẶC total_payable. disbursement: cash (tiền vào/ra disbursement_account; cash_amount = tiền thực nhận nếu ít hơn tổng phải trả — phần chênh lệch ghi là "Lãi & phí vay"), purchase (mua hàng trả góp: ghi một khoản chi bằng tổng phải trả thuộc purchase_category), existing (khoản vay đang chạy: nhập paid_periods). Hỏi người dùng các thông số còn thiếu thay vì đoán.',
+        'Tạo khoản vay (borrow) hoặc cho vay (lend) theo số tiền phải trả mỗi kỳ (đã gồm lãi); tự tạo ví nợ cùng tên và lịch trả hằng tháng. Truyền installment_amount HOẶC total_payable. disbursement: cash (tiền vào/ra disbursement_account; cash_amount = tiền thực nhận nếu ít hơn tổng phải trả — phần chênh lệch ghi là "Lãi & phí vay"), purchase (mua hàng trả góp: ghi một khoản chi bằng tổng phải trả thuộc purchase_category), existing (khoản vay đang chạy: nhập paid_periods). Cho bạn bè mượn một lần: direction=lend, term_months=1, total_payable = số tiền cho mượn, disbursement=cash. Hỏi người dùng các thông số còn thiếu thay vì đoán.',
       inputSchema: {
         name: z.string().describe('Tên khoản vay, ví dụ "Vay mua xe", "Trả góp iPhone"'),
         direction: z.enum(LOAN_DIRECTIONS).describe('borrow = đi vay/trả góp, lend = cho người khác vay'),
@@ -98,7 +98,7 @@ export function registerLoanTools(server: McpServer): void {
     {
       title: 'Ghi một kỳ trả nợ',
       description:
-        'Ghi kỳ kế tiếp của khoản vay bằng một chuyển khoản giữa ví trả và ví nợ; mặc định đúng tiền kỳ. Trả dư: phần dư trừ vào các kỳ cuối. Trả thiếu: phần thiếu cộng vào kỳ sau. payoff=true để tất toán với số tiền thực trả (phần còn lại được miễn). Dùng tool này thay cho record_transfer khi trả nợ.',
+        'Ghi kỳ kế tiếp của khoản vay bằng một chuyển khoản giữa ví trả và ví nợ; mặc định đúng tiền kỳ. Trả dư: phần dư trừ vào các kỳ cuối. Trả thiếu: phần thiếu cộng vào kỳ sau. payoff=true để tất toán với số tiền thực trả (phần còn lại được miễn). Dùng tool này thay cho record_transfer khi trả nợ. Với khoản cho vay (lend) đây là thu hồi tiền: ví nhận tăng, khoản phải thu giảm cùng số tiền, không ghi thu nhập mới — đừng dùng record_transactions income cho việc này. Số tiền vượt phần còn phải thu bị từ chối (OVERPAYMENT).',
       inputSchema: {
         loan: loanRef,
         paid_on: dateInput.optional(),

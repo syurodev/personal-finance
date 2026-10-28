@@ -8,6 +8,9 @@ Quy tắc tương thích cho MCP tool: xem spec §10 (`docs/superpowers/specs/20
 
 ## [Unreleased]
 
+### Changed
+- Hướng dẫn cho agent: thu hồi tiền cho mượn phải đi qua `record_loan_payment` (không ghi thu nhập hay chuyển khoản thường), cách khai báo khoản cho mượn một lần, và sửa ghi nhầm bằng `update_transaction`/`delete_transaction`.
+
 ## [0.4.0] - 2026-10-21
 
 Khoản vay, trả góp và cho vay — theo dõi theo số tiền mỗi kỳ (đã gồm lãi).
