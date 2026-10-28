@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { FINANCE_READ, FINANCE_WRITE } from '../../auth/constants.js';
 import { LOAN_DIRECTIONS, LOAN_STATUSES } from '../../db/schema/index.js';
+import { lendMoney, receiveRepayment } from '../../loans/lending.js';
 import { createLoan, getLoanStatus, listUpcomingPayments } from '../../loans/loans.js';
 import { cancelLoan, recordLoanPayment, updateLoan } from '../../loans/payments.js';
 import { runTool } from '../tool-kit.js';
@@ -94,11 +95,71 @@ export function registerLoanTools(server: McpServer): void {
   );
 
   server.registerTool(
+    'lend_money',
+    {
+      title: 'Cho mượn tiền',
+      description:
+        'Cho người khác mượn tiền một lần, không lãi: tiền đi ra từ ví chọn (from_account), khoản phải thu "Cho <người> mượn" tăng cùng số tiền. Không phải chi tiêu. Khi họ trả, dùng receive_repayment (có thể nhận vào ví khác).',
+      inputSchema: {
+        borrower: z.string().describe('Tên người mượn, ví dụ "Lan"'),
+        amount: amountInput,
+        from_account: accountRef.describe('Ví đưa tiền'),
+        lent_on: dateInput.optional().describe('Ngày cho mượn; mặc định hôm nay'),
+        due_on: dateInput.optional().describe('Hạn hẹn trả; mặc định 1 tháng sau'),
+      },
+      outputSchema: loanDetail,
+      annotations: WRITE,
+    },
+    async (a) =>
+      runTool(
+        FINANCE_WRITE,
+        () => lendMoney({ borrower: a.borrower, amount: a.amount, fromAccount: a.from_account, lentOn: a.lent_on, dueOn: a.due_on }),
+        (d) => `Đã ghi "${d.name}": cho mượn ${d.remaining_amount} ${d.currency}.`,
+      ),
+  );
+
+  server.registerTool(
+    'receive_repayment',
+    {
+      title: 'Nhận lại tiền cho mượn',
+      description:
+        'Người mượn trả lại tiền (một phần hoặc đủ) vào ví to_account — có thể khác ví đã đưa tiền. Ví nhận tăng, khoản phải thu giảm cùng số tiền, không phải thu nhập; hết nợ thì khoản vay tự đóng. Tìm khoản bằng get_loan_status nếu chưa rõ. forgive_remainder=true khi họ trả thiếu và bạn bỏ phần còn lại. Nếu trước đó đã lỡ ghi khoản tiền này là thu nhập, truyền id giao dịch đó vào replaces_transaction để xoá nó cùng lúc (tránh cộng tiền hai lần).',
+      inputSchema: {
+        loan: loanRef.describe('Id hoặc tên khoản cho mượn, ví dụ "Cho Lan mượn" hoặc "Lan"'),
+        amount: amountInput.describe('Số tiền nhận lại lần này'),
+        to_account: accountRef.describe('Ví nhận tiền'),
+        received_on: dateInput.optional().describe('Ngày nhận; mặc định hôm nay'),
+        forgive_remainder: z.boolean().optional().describe('Bỏ phần còn lại và đóng khoản cho mượn'),
+        replaces_transaction: z.string().optional().describe('Id khoản thu nhập ghi nhầm cho đúng lần nhận này'),
+      },
+      outputSchema: { loan: loanSummary, paid: installmentView, balances: z.array(balanceView) },
+      annotations: WRITE,
+    },
+    async (a) =>
+      runTool(
+        FINANCE_WRITE,
+        () =>
+          receiveRepayment({
+            loan: a.loan,
+            amount: a.amount,
+            toAccount: a.to_account,
+            receivedOn: a.received_on,
+            forgiveRemainder: a.forgive_remainder,
+            replacesTransaction: a.replaces_transaction,
+          }),
+        (d) =>
+          d.loan.status === 'closed'
+            ? `Đã nhận ${d.paid.amount} ${d.loan.currency}; "${d.loan.name}" đã đóng.`
+            : `Đã nhận ${d.paid.amount} ${d.loan.currency}; còn phải thu ${d.loan.remaining_amount}.`,
+      ),
+  );
+
+  server.registerTool(
     'record_loan_payment',
     {
       title: 'Ghi một kỳ trả nợ',
       description:
-        'Ghi kỳ kế tiếp của khoản vay bằng một chuyển khoản giữa ví trả và ví nợ; mặc định đúng tiền kỳ. Trả dư: phần dư trừ vào các kỳ cuối. Trả thiếu: phần thiếu cộng vào kỳ sau. payoff=true để tất toán với số tiền thực trả (phần còn lại được miễn). Dùng tool này thay cho record_transfer khi trả nợ. Với khoản cho vay (lend) đây là thu hồi tiền: ví nhận tăng, khoản phải thu giảm cùng số tiền, không ghi thu nhập mới — đừng dùng record_transactions income cho việc này. Số tiền vượt phần còn phải thu bị từ chối (OVERPAYMENT).',
+        'Ghi kỳ kế tiếp của khoản vay bằng một chuyển khoản giữa ví trả và ví nợ; mặc định đúng tiền kỳ. Trả dư: phần dư trừ vào các kỳ cuối. Trả thiếu: phần thiếu cộng vào kỳ sau. payoff=true để tất toán với số tiền thực trả (phần còn lại được miễn). Dùng tool này thay cho record_transfer khi trả nợ. Với khoản cho vay (lend) đây là thu hồi tiền (cho mượn một lần nên dùng receive_repayment): ví nhận tăng, khoản phải thu giảm cùng số tiền, không ghi thu nhập mới — đừng dùng record_transactions income cho việc này. Số tiền vượt phần còn phải thu bị từ chối (OVERPAYMENT).',
       inputSchema: {
         loan: loanRef,
         paid_on: dateInput.optional(),

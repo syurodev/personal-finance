@@ -52,6 +52,8 @@ export const ALL_TOOLS = [
   'get_budget_status',
   'cashflow_summary',
   'create_loan',
+  'lend_money',
+  'receive_repayment',
   'record_loan_payment',
   'update_loan',
   'cancel_loan',
