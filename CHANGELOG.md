@@ -8,6 +8,15 @@ Quy tắc tương thích cho MCP tool: xem spec §10 (`docs/superpowers/specs/20
 
 ## [Unreleased]
 
+### Added
+- MCP tool `lend_money` (cho mượn một lần từ một ví) và `receive_repayment` (nhận lại tiền vào ví bất kỳ, trả một phần, bỏ phần còn lại, thay khoản thu nhập ghi nhầm); bọc trên khoản vay `lend`, không đổi schema.
+
+### Fixed
+- MCP: phản hồi chỉ được gửi sau khi transaction của request đã commit. Trước đây client ghi rồi đọc ngay có thể thấy số dư cũ (làm CI e2e fail ngẫu nhiên).
+
+### Changed
+- Hướng dẫn cho agent: thu hồi tiền cho mượn phải đi qua `record_loan_payment` (không ghi thu nhập hay chuyển khoản thường), cách khai báo khoản cho mượn một lần, và sửa ghi nhầm bằng `update_transaction`/`delete_transaction`.
+
 ## [0.4.0] - 2026-10-21
 
 Khoản vay, trả góp và cho vay — theo dõi theo số tiền mỗi kỳ (đã gồm lãi).

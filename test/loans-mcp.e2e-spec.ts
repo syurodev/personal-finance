@@ -107,4 +107,14 @@ describe('loans over MCP', () => {
       await readOnly.close();
     }
   });
+
+  // Phản hồi HTTP phải đến sau khi transaction của request đã commit: client ghi rồi đọc ngay không được thấy số dư cũ.
+  it('shows a write to the very next read', async () => {
+    let expected = Number(await balance('VCB'));
+    for (let i = 0; i < 40; i++) {
+      await callOk(client, 'record_transactions', { items: [{ amount: '1000', type: 'income', account: 'VCB' }] });
+      expected += 1000;
+      expect(await balance('VCB')).toBe(String(expected));
+    }
+  });
 });

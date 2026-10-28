@@ -1,6 +1,6 @@
 import { Controller, Delete, Get, Inject, Logger, Post, Req, Res } from '@nestjs/common';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import type { Request, Response } from 'express';
 import { getEnv } from '../config/env.js';
 import type { Db } from '../db/client.js';
@@ -22,6 +22,16 @@ function sendMethodNotAllowed(res: Response): void {
     .status(405)
     .set('Allow', 'POST')
     .json({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null });
+}
+
+/** Request Web chỉ mang header: nội dung JSON-RPC đã được Express parse và truyền riêng qua parsedBody. */
+function toWebRequest(req: Request): globalThis.Request {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(req.headers)) {
+    if (Array.isArray(value)) value.forEach((v) => headers.append(name, v));
+    else if (value !== undefined) headers.set(name, value);
+  }
+  return new globalThis.Request(`${getEnv().BASE_URL}${req.originalUrl}`, { method: req.method, headers });
 }
 
 @Controller('mcp')
@@ -55,14 +65,21 @@ export class McpController {
     };
 
     const server = createMcpServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
+    const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => {
       void server.close();
     });
 
     try {
       await server.connect(transport);
-      await runAsUser(this.db, actor, () => transport.handleRequest(req, res, req.body));
+      // Đọc hết phản hồi bên trong transaction nhưng chỉ ghi ra client sau khi đã commit: nếu gửi trước, client
+      // ghi rồi đọc ngay có thể thấy dữ liệu cũ.
+      const reply = await runAsUser(this.db, actor, async () => {
+        const response = await transport.handleRequest(toWebRequest(req), { authInfo, parsedBody: req.body });
+        return { status: response.status, headers: response.headers, body: Buffer.from(await response.arrayBuffer()) };
+      });
+      reply.headers.forEach((value, name) => res.setHeader(name, value));
+      res.status(reply.status).end(reply.body);
     } catch (error) {
       this.logger.error(error);
       if (!res.headersSent) {
